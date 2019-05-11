@@ -13,7 +13,7 @@ class Couples(BaseCog):
 		self.bot = bot
 		self.conf = Config.get_conf(self, identifier=69696969)
 
-		self.conf.register_global(couples = [], pending_kisses = [])
+		self.conf.register_global(couples = [], pending_kisses = [], pending_proposals = [], pending_divorces = [])
 		self.conf.register_guild(kiss_messages = [], hug_messages = [], propose_messages = [], divorce_messages = [])
 
 	@commands.command()
@@ -45,7 +45,7 @@ class Couples(BaseCog):
 		except KeyError:
 			messages = []
 		for i in messages:
-			if messages[i] == msg:
+			if i == msg:
 				await ctx.send("This hug message already exists!")
 				return
 		messages.append(msg)
@@ -65,7 +65,7 @@ class Couples(BaseCog):
 			await ctx.send("No hug messages exist yet.")
 			return
 		for i in messages:
-			if messages[i] == msg:
+			if i == msg:
 				messages.remove(msg)
 				await self.conf.guild(ctx.guild).set_raw("hug_messages", value = messages)
 				await ctx.message.add_reaction("\u2705")
@@ -160,7 +160,7 @@ class Couples(BaseCog):
 		except KeyError:
 			messages = []
 		for i in messages:
-			if messages[i] == msg:
+			if i == msg:
 				await ctx.send("This kiss message already exists!")
 				return
 		messages.append(msg)
@@ -199,3 +199,131 @@ class Couples(BaseCog):
 			await ctx.send("No kiss messages exist yet.")
 			return
 		await ctx.send("`{0}`".format("`\n`".join(messages)))
+
+	@commands.command(aliases = ["marry"])
+	@commands.guild_only()
+	async def propose(self, ctx, user: discord.Member):
+		"""Requests a server member's hand in marriage."""
+		if user == ctx.message.author:
+			return
+		couples = await self.conf.get_raw("couples")
+		for i in couples:
+			if i.get("user1") == ctx.author.id:
+				if i.get("divorced") == 0:
+					await ctx.send("You're already married!")
+					return
+				else:
+					# sanitize divorced value
+					updated = {"divorced": 1}
+					i.update(updated)
+			if i.get("user2") == user.id:
+				if i.get("divorced") == 0:
+					await ctx.send("That user is already married!")
+					return
+				else:
+					# sanitize divorced value
+					updated = {"divorced": 1}
+					i.update(updated)
+		# Check "pending" status
+		senttime = calendar.timegm(ctx.message.created_at.utctimetuple())
+		pending = await self.conf.get_raw("pending_proposals")
+		for i in pending:
+			# Clear proposals "pending" since 30s in case of a bot crash/shutdown during an active kiss, regardless if either party was involved
+			que_time = int(i.get("time"))
+			if (senttime - que_time) > 30:
+				pending.remove(i)
+				await self.conf.set_raw("pending_proposals", value = pending)
+			if i.get("user1") == ctx.author.id:
+				await ctx.send("You already have a pending proposal!")
+				return
+			elif i.get("user2") == user.id:
+				await ctx.send("That user already has a pending proposal!")
+				return
+		await ctx.send("{0}, you have been offered {1}'s hand in marriage.\nDo you `{2}accept` or `{2}refuse`?".format(user.display_name, ctx.author.display_name, ctx.prefix))
+		# Set "pending" status
+		pending.append({"user1": ctx.author.id, "user2": user.id, "time": senttime})
+		await self.conf.set_raw("pending_proposals", value = pending)
+		def check(msg):
+			return msg.channel == ctx.channel and (msg.author == ctx.author and msg.content == "{0}cancel".format(ctx.prefix)) or (msg.author == user and (msg.content == "{0}accept".format(ctx.prefix) or msg.content == "{0}refuse".format(ctx.prefix)))
+		try:
+			message = await ctx.bot.wait_for("message", check=check, timeout=30)
+		except asyncio.TimeoutError:
+			# Clear pending status
+			for i in pending:
+				if i.get("user1") == ctx.author.id:
+					pending.remove(i)
+					await self.conf.set_raw("pending_proposals", value = pending)
+			await ctx.send("{0} didn't respond in time.".format(user.display_name))
+			return
+		else:
+			for i in pending:
+					if i.get("user1") == ctx.author.id:
+						pending.remove(i)
+						await self.conf.set_raw("pending_proposals", value = pending)
+			if message.author == ctx.author and message.content == "{0}cancel".format(ctx.prefix):
+				await ctx.send("{0} canceled their request.".format(ctx.author.display_name))
+				return
+			elif message.author == user and message.content == "{0}accept".format(ctx.prefix):
+				try:
+					messages = await self.conf.guild(ctx.guild).get_raw("proposal_messages")
+				except KeyError:
+					messages = ["{0} and {1} are now married. \u2665"]
+				if messages == []:
+					messages = ["{0} and {1} are now married. \u2665"]
+				couples.append({"user1": ctx.author.id, "user2": user.id, "karma": 0, "divorced": 0, "married_since": 0, "divorced_since": 0, "first_married": 0})
+				for i in couples: # check for first marriage
+					if i.get("user1") == ctx.author.id and i.get("user2") == user.id:
+						if i.get("first_married") == 0:
+							first_married = senttime
+							i.update(first_married = senttime)
+						i.update(married_since = senttime)
+						karma = int(i.get("karma")) + 100
+						i.update(karma = karma)
+				await self.conf.set_raw("couples", value = couples)
+				await ctx.send("*{0}*".format(random.choice(messages).format(ctx.author.display_name, user.display_name)))
+				await ctx.send("\U0001f497: +100 ({0})".format(karma))
+				return
+			elif message.author == user and message.content == "{0}refuse".format(ctx.prefix):
+				await ctx.send("{0} turned down your proposal.".format(user.display_name))
+				return
+
+	@commands.command(aliases = ["adminmarry"])
+	@checks.is_owner()
+	@commands.guild_only()
+	async def adminpropose(self, ctx, user1: discord.Member, user2: discord.Member):
+		"""Marries two server members manually."""
+		senttime = calendar.timegm(ctx.message.created_at.utctimetuple())
+		couples = await self.conf.get_raw("couples")
+		for i in couples:
+			if i.get("user1") == user1.id:
+				if i.get("divorced") == 0:
+					await ctx.send("{0} is already married.".format(user1.display_name))
+					return
+				else:
+					# sanitize divorced value
+					i.update(divorced = 1)
+			if i.get("user2") == user2.id:
+				if i.get("divorced") == 0:
+					await ctx.send("{0} is already married.".format(user2.display_name))
+					return
+				else:
+					# sanitize divorced value
+					i.update(dicorced = 1)
+		try:
+			messages = await self.conf.guild(ctx.guild).get_raw("proposal_messages")
+		except KeyError:
+			messages = ["{0} and {1} are now married. \u2665"]
+		if messages == []:
+			messages = ["{0} and {1} are now married. \u2665"]
+		couples.append({"user1": user1.id, "user2": user2.id, "karma": 0, "divorced": 0, "married_since": 0, "divorced_since": 0, "first_married": 0})
+		for i in couples: # check for first marriage
+			if i.get("user1") == user1.id and i.get("user2") == user2.id:
+				if i.get("first_married") == 0:
+					first_married = senttime
+					i.update(first_married = senttime)
+				i.update(married_since = senttime)
+				karma = int(i.get("karma")) + 100
+				i.update(karma = karma)
+		await self.conf.set_raw("couples", value = couples)
+		await ctx.send("*{0}*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
+		await ctx.send("\U0001f497: +100 ({0})".format(karma))
