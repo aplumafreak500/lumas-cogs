@@ -12,7 +12,7 @@ class Boop(BaseCog):
 
 	@commands.command()
 	async def boop(self, ctx, user: discord.Member, *, message: str = None):
-		"""Boop command"""
+		"""Boop a server member"""
 		try:
 			boops = int(await self.conf.user(ctx.author).get_raw("boops"))
 		except KeyError: # We haven't booped anyone yet
@@ -38,9 +38,14 @@ class Boop(BaseCog):
 		if user is None:
 			user = ctx.author
 		try: # TODO: iterate through boop victim list
-			boops = await self.conf.user(user).booped_by.get(user)
-			# boop_victims = int(await self.conf.user(user).booped_by.get_raw(user))
+			boops = await self.conf.user(user).get_raw("booped_by")
+			msg = "{0}'s booped victims: \n".format(user.display_name)
+			total = 0
+			for i in boops:
+				times = int(boops.get(i))
+				msg += "{0} ({1} times)\n".format(i, times)
+				total += times
 		except KeyError: # not booped yet
 			await ctx.send("This user hasn't been booped yet!")
 			return
-		await ctx.send("{0}'s booped victims: \n{1}".format(user.display_name, boops))
+		await ctx.send("{0}\n\nTotal boops: {1}".format(msg, total))
