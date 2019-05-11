@@ -11,7 +11,7 @@ class Boop(BaseCog):
 		self.conf.register_user(boops = 0, booped_by = {})
 
 	@commands.command()
-	async def boop(self, ctx, user: discord.User, *, message: str = None):
+	async def boop(self, ctx, user: discord.Member, *, message: str = None):
 		"""Boop command"""
 		try:
 			boops = int(await self.conf.user(ctx.author).get_raw("boops"))
