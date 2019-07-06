@@ -11,6 +11,8 @@ class Boop(BaseCog):
 		self.conf.register_user(boops = 0, booped_by = {})
 
 	@commands.command()
+	@commands.cooldown(rate=3, per=10, type=commands.BucketType.user)
+	@commands.guild_only() # it's verified to work via DMs though
 	async def boop(self, ctx, user: discord.Member, *, message: str = None):
 		"""Boop a server member"""
 		try:
@@ -37,7 +39,7 @@ class Boop(BaseCog):
 		"""List boops"""
 		if user is None:
 			user = ctx.author
-		try: # TODO: iterate through boop victim list
+		try:
 			boops = await self.conf.user(user).get_raw("booped_by")
 			msg = "{0}'s booped victims: \n".format(user.display_name)
 			total = 0
