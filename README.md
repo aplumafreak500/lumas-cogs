@@ -5,6 +5,9 @@ This is a repository of cogs for [Redbot v3](https://github.com/Cog-Creators/Red
 
 **Pull requests are welcome!**
 
+### Contact Me On Discord
+aplumafreak500#5312
+
 ## Installation
 
 To install a cog on your bot instance:
