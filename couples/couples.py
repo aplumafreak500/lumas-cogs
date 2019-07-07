@@ -21,7 +21,9 @@ class Couples(BaseCog):
 	@commands.guild_only() # todo: once implemented in DMs, remove this
 	async def hug(self, ctx, member: discord.Member = None):
 		"""Hugs a server member."""
-		if member is None or member == ctx.author:
+		if member is None:
+			return
+		if member == ctx.author:
 			await ctx.send("*{0} hugs themself because they're feeling very lonely...*".format(ctx.author.display_name)) # todo: customized hug messages here too?
 			return
 		try:
@@ -95,6 +97,7 @@ class Couples(BaseCog):
 		"""Offers a kiss to another server member."""
 		# Spouse check
 		spouse = None
+		divorced = 0
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
 			if i.get("user1") == ctx.author.id:
@@ -115,7 +118,7 @@ class Couples(BaseCog):
 					i.update(divorced = 1)
 					divorced = 1
 					await self.conf.set_raw("couples", value = couples)
-		if user is not None and (user.id != spouse and divorced == 0):
+		if user is not None and spouse is not None and (user.id != spouse and divorced == 0):
 			return
 		if spouse is not None and divorced == 0:
 			user = discord.utils.get(ctx.guild.members, id = spouse)
@@ -167,7 +170,12 @@ class Couples(BaseCog):
 					messages = ["{0} and {1} share a kiss \u2665"]
 				if messages == []:
 					messages = ["{0} and {1} share a kiss \u2665"]
-				await ctx.send("*{0}*".format(random.choice(messages).format(ctx.author.display_name, user.display_name)))
+				sentmsg = random.choice(messages)
+				try:
+					await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
+				except IndexError:
+					await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
+					await ctx.send("*{0} and {1} share a kiss \u2665*".format(ctx.author.display_name, user.display_name))
 				if spouse is not None and divorced == 0:
 					for i in couples:
 						if (i.get("user1") == spouse and i.get("user2") == ctx.author.id) or (i.get("user1") == ctx.author.id and i.get("user2") == spouse):
@@ -216,8 +224,10 @@ class Couples(BaseCog):
 		if messages == []:
 			await ctx.send("No kiss messages exist yet.")
 			return
+		print(messages)
 		for i in messages:
-			if messages[i] == msg:
+			print(i)
+			if i == msg:
 				messages.remove(msg)
 				await self.conf.guild(ctx.guild).set_raw("kiss_messages", value = messages)
 				await ctx.message.add_reaction("\u2705")
@@ -326,7 +336,12 @@ class Couples(BaseCog):
 						i.update(divorced = 0)
 						await self.conf.set_raw("couples", value = couples)
 				await self.conf.set_raw("couples", value = couples)
-				await ctx.send("*{0}*".format(random.choice(messages).format(ctx.author.display_name, user.display_name)))
+				sentmsg = random.choice(messages)
+				try:
+					await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
+				except IndexError:
+					await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
+					await ctx.send("*{0} and {1} are now married. \u2665*")
 				await ctx.send("\U0001f497: +100 ({0})".format(karma))
 				return
 			elif message.author == user and message.content == "{0}refuse".format(ctx.prefix):
@@ -381,7 +396,12 @@ class Couples(BaseCog):
 				i.update(divorced = 0)
 				await self.conf.set_raw("couples", value = couples)
 		await self.conf.set_raw("couples", value = couples)
-		await ctx.send("*{0}*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
+		sentmsg = random.choice(messages)
+		try:
+			await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
+		except IndexError:
+			await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
+			await ctx.send("*{0} and {1} are now married. \u2665*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
 		await ctx.send("\U0001f497: +100 ({0})".format(karma))
 
 	@commands.group()
@@ -565,7 +585,12 @@ class Couples(BaseCog):
 						i.update(divorced_since = senttime)
 						i.update(divorced = 1)
 				await self.conf.set_raw("couples", value = couples)
-				await ctx.send("*{0}*".format(random.choice(messages).format(ctx.author.display_name, user.display_name)))
+				sentmsg = random.choice(messages)
+				try:
+					await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
+				except IndexError:
+					await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
+					await ctx.send("*{0} and {1} are now divorced. \U0001F494*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
 				return
 			elif message.author == user and message.content == "{0}refuse".format(ctx.prefix):
 				await ctx.send("{0} doesn't want to divorce yet. ".format(user.display_name))
@@ -609,7 +634,12 @@ class Couples(BaseCog):
 				i.update(divorced_since = senttime)
 				i.update(divorced = 1)
 		await self.conf.set_raw("couples", value = couples)
-		await ctx.send("*{0}*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
+		sentmsg = random.choice(messages)
+		try:
+			await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
+		except IndexError:
+			await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
+			await ctx.send("*{0} and {1} are now divorced. \U0001F494*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
 
 	@checks.is_owner()
 	@commands.guild_only()
