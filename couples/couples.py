@@ -478,7 +478,7 @@ class Couples(BaseCog):
 	async def spouse(self, ctx, user: discord.Member = None):
 		if user is None:
 			user = ctx.message.author
-		spouse = None
+		spouse_id = None
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
 			await self.debug_log_channel.send("`spouse` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
@@ -489,7 +489,7 @@ class Couples(BaseCog):
 					divorced = 1
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				spouse = i.get("user2")
+				spouse_id = i.get("user2")
 				karma = i.get("karma")
 				married_since = i.get("married_since")
 				first_married = i.get("first_married")
@@ -501,13 +501,14 @@ class Couples(BaseCog):
 					divorced = 1
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				spouse = i.get("user1")
+				spouse_id = i.get("user1")
 				karma = i.get("karma")
 				married_since = i.get("married_since")
 				first_married = i.get("first_married")
 				divorced_since = i.get("divorced_since")
 			if spouse is not None and divorced == 0:
 				break # we already have our current spouse, prevents prior spouses from overwriting current ones
+			# TODO: Return the entry from the latest marriage/divorce, in cases of remarriage or database hacks
 		if spouse is None:
 			await ctx.send("{0} is not married!".format(user.display_name))
 			return
@@ -519,7 +520,12 @@ class Couples(BaseCog):
 			is_or_was = "is"
 		else:
 			is_or_was = "was"
-		await ctx.send("{0}'s spouse {7} {1}\n\n**Karma**: {2}\n**Is Divorced**: {3}\n**Married Since**: {4}\n**Divorced Since**: {5}\n**First Marraige On**: {6}".format(user.display_name, discord.utils.get(self.bot.get_all_members(), id = spouse).display_name, karma, bool(divorced), time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(married_since)), divorced_str, time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(first_married)), is_or_was))
+		spouse_user = discord.utils.get(self.bot.get_all_members(), id = spouse_id)
+		if spouse_user == None:
+			spouse_str = "<{}>".format(spouse_id) # don't explicitly mention if the spouse is present in the data but is not found in Discord's API
+		else:
+			spouse_str=spouse_user.display_name
+		await ctx.send("{0}'s spouse {7} {1}\n\n**Karma**: {2}\n**Is Divorced**: {3}\n**Married Since**: {4}\n**Divorced Since**: {5}\n**First Marraige On**: {6}".format(user.display_name, spouse_str, karma, bool(divorced), time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(married_since)), divorced_str, time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(first_married)), is_or_was))
 
 	# todo: +couples
 
