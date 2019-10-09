@@ -17,13 +17,18 @@ class Couples(BaseCog):
 		self.conf.register_global(couples = [], pending_kisses = [], pending_proposals = [], pending_divorces = [])
 		self.conf.register_guild(kiss_messages = [], hug_messages = [], propose_messages = [], divorce_messages = [])
 
+		# TODO: Per-guild settings (and possibly exchange settings across servers?)
+		# TODO: Set spouse in per-user/per-member contexts instead of using a couple list?
+
+		self.debug_log_channel = bot.get_channel(582941546488397829)
+
 	@commands.command()
 	@commands.guild_only() # todo: once implemented in DMs, remove this
 	async def hug(self, ctx, member: discord.Member = None):
 		"""Hugs a server member."""
 		if member is None:
 			return
-		if member == ctx.author:
+		if member.id == ctx.author.id:
 			await ctx.send("*{0} hugs themself because they're feeling very lonely...*".format(ctx.author.display_name)) # todo: customized hug messages here too?
 			return
 		try:
@@ -100,6 +105,7 @@ class Couples(BaseCog):
 		divorced = 0
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
+			await self.debug_log_channel.send("`kiss` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == ctx.author.id:
 				divorced = i.get("divorced")
 				if divorced == 0:
@@ -119,15 +125,17 @@ class Couples(BaseCog):
 					divorced = 1
 					await self.conf.set_raw("couples", value = couples)
 		if user is not None and spouse is not None and (user.id != spouse and divorced == 0):
+			await self.debug_log_channel.send("`kiss` DEBUG LOG\n```user is not None and spouse is not None and (user.id != spouse and divorced == 0)```")
 			return
 		if spouse is not None and divorced == 0:
-			user = discord.utils.get(ctx.guild.members, id = spouse)
-		if user is None or user == ctx.message.author:
+			user = discord.utils.get(self.bot.get_all_members(), id = spouse)
+		if user is None or user.id == ctx.message.author.id:
 			return
 		# Check "pending" status
 		senttime = calendar.timegm(ctx.message.created_at.utctimetuple())
 		pending = await self.conf.get_raw("pending_kisses")
 		for i in pending:
+			await self.debug_log_channel.send("`kiss` DEBUG LOG\n``` Pending Time: {} User1: {} User2: {}```".format(i.get("time"), i.get("user1"), i.get("user2")))
 			# Clear kisses "pending" since 30s in case of a bot crash/shutdown during an active kiss, regardless if either party was involved
 			que_time = int(i.get("time"))
 			if (senttime - que_time) > 30:
@@ -144,7 +152,7 @@ class Couples(BaseCog):
 		pending.append({"user1": ctx.author.id, "user2": user.id, "time": senttime})
 		await self.conf.set_raw("pending_kisses", value = pending)
 		def check(msg):
-			return msg.channel == ctx.channel and (msg.author == ctx.author and msg.content == "{0}cancel".format(ctx.prefix)) or (msg.author == user and (msg.content == "{0}accept".format(ctx.prefix) or msg.content == "{0}refuse".format(ctx.prefix)))
+			return msg.channel == ctx.channel and (msg.author.id == ctx.author.id and msg.content == "{0}cancel".format(ctx.prefix)) or (msg.author.id == user.id and (msg.content == "{0}accept".format(ctx.prefix) or msg.content == "{0}refuse".format(ctx.prefix)))
 		try:
 			message = await ctx.bot.wait_for("message", check=check, timeout=30)
 		except asyncio.TimeoutError:
@@ -160,10 +168,10 @@ class Couples(BaseCog):
 					if i.get("user1") == ctx.author.id:
 						pending.remove(i)
 						await self.conf.set_raw("pending_kisses", value = pending)
-			if message.author == ctx.author and message.content == "{0}cancel".format(ctx.prefix):
+			if message.author.id == ctx.author.id and message.content == "{0}cancel".format(ctx.prefix):
 				await ctx.send("{0} canceled their request.".format(ctx.author.display_name))
 				return
-			elif message.author == user and message.content == "{0}accept".format(ctx.prefix):
+			elif message.author.id == user.id and message.content == "{0}accept".format(ctx.prefix):
 				try:
 					messages = await self.conf.guild(ctx.guild).get_raw("kiss_messages") # todo: allow smooch buddies in DMs :8StarcoKiss:
 				except KeyError:
@@ -184,7 +192,7 @@ class Couples(BaseCog):
 							await self.conf.set_raw("couples", value = couples)
 							await ctx.send("\U0001f497: +15 ({0})".format(karma))
 							return
-			elif message.author == user and message.content == "{0}refuse".format(ctx.prefix):
+			elif message.author.id == user.id and message.content == "{0}refuse".format(ctx.prefix):
 				await ctx.send("{0} doesn't want a kiss right now.".format(user.display_name))
 				return
 
@@ -252,10 +260,11 @@ class Couples(BaseCog):
 	@commands.guild_only()
 	async def propose(self, ctx, user: discord.Member):
 		"""Requests a server member's hand in marriage."""
-		if user == ctx.message.author:
+		if user.id == ctx.message.author.id:
 			return
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
+			await self.debug_log_channel.send("`propose` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == ctx.author.id or i.get("user2") == ctx.author.id:
 				if i.get("divorced") == 0:
 					await ctx.send("You're already married!")
@@ -276,6 +285,7 @@ class Couples(BaseCog):
 		senttime = calendar.timegm(ctx.message.created_at.utctimetuple())
 		pending = await self.conf.get_raw("pending_proposals")
 		for i in pending:
+			await self.debug_log_channel.send("`propose` DEBUG LOG\n``` Pending Time: {} User1: {} User2: {}```".format(i.get("time"), i.get("user1"), i.get("user2")))
 			# Clear proposals "pending" since 30s in case of a bot crash/shutdown during an active kiss, regardless if either party was involved
 			que_time = int(i.get("time"))
 			if (senttime - que_time) > 30:
@@ -292,7 +302,7 @@ class Couples(BaseCog):
 		pending.append({"user1": ctx.author.id, "user2": user.id, "time": senttime})
 		await self.conf.set_raw("pending_proposals", value = pending)
 		def check(msg):
-			return msg.channel == ctx.channel and (msg.author == ctx.author and msg.content == "{0}cancel".format(ctx.prefix)) or (msg.author == user and (msg.content == "{0}accept".format(ctx.prefix) or msg.content == "{0}refuse".format(ctx.prefix)))
+			return msg.channel == ctx.channel and (msg.author.id == ctx.author.id and msg.content == "{0}cancel".format(ctx.prefix)) or (msg.author.id == user.id and (msg.content == "{0}accept".format(ctx.prefix) or msg.content == "{0}refuse".format(ctx.prefix)))
 		try:
 			message = await ctx.bot.wait_for("message", check=check, timeout=30)
 		except asyncio.TimeoutError:
@@ -308,10 +318,10 @@ class Couples(BaseCog):
 					if i.get("user1") == ctx.author.id:
 						pending.remove(i)
 						await self.conf.set_raw("pending_proposals", value = pending)
-			if message.author == ctx.author and message.content == "{0}cancel".format(ctx.prefix):
+			if message.author.id == ctx.author.id and message.content == "{0}cancel".format(ctx.prefix):
 				await ctx.send("{0} canceled their request.".format(ctx.author.display_name))
 				return
-			elif message.author == user and message.content == "{0}accept".format(ctx.prefix):
+			elif message.author.id == user.id and message.content == "{0}accept".format(ctx.prefix):
 				try:
 					messages = await self.conf.guild(ctx.guild).get_raw("proposal_messages")
 				except KeyError:
@@ -341,10 +351,10 @@ class Couples(BaseCog):
 					await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
 				except IndexError:
 					await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
-					await ctx.send("*{0} and {1} are now married. \u2665*")
+					await ctx.send("*{0} and {1} are now married. \u2665*".format(ctx.author.display_name, user.display_name))
 				await ctx.send("\U0001f497: +100 ({0})".format(karma))
 				return
-			elif message.author == user and message.content == "{0}refuse".format(ctx.prefix):
+			elif message.author.id == user.id and message.content == "{0}refuse".format(ctx.prefix):
 				await ctx.send("{0} turned down your proposal.".format(user.display_name))
 				return
 
@@ -356,6 +366,7 @@ class Couples(BaseCog):
 		senttime = calendar.timegm(ctx.message.created_at.utctimetuple())
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
+			await self.debug_log_channel.send("`adminpropose` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == user1.id or i.get("user2") == user1.id:
 				if i.get("divorced") == 0:
 					await ctx.send("{0} is already married.".format(user1.display_name))
@@ -398,10 +409,10 @@ class Couples(BaseCog):
 		await self.conf.set_raw("couples", value = couples)
 		sentmsg = random.choice(messages)
 		try:
-			await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
+			await ctx.send("*{0}*".format(sentmsg.format(user1.display_name, user2.display_name)))
 		except IndexError:
 			await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
-			await ctx.send("*{0} and {1} are now married. \u2665*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
+			await ctx.send("*{0} and {1} are now married. \u2665*".format(user1.display_name, user2.display_name))
 		await ctx.send("\U0001f497: +100 ({0})".format(karma))
 
 	@commands.group()
@@ -470,6 +481,7 @@ class Couples(BaseCog):
 		spouse = None
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
+			await self.debug_log_channel.send("`spouse` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == user.id:
 				divorced = i.get("divorced")
 				if divorced != 0:
@@ -502,12 +514,12 @@ class Couples(BaseCog):
 		if divorced_since == 0:
 			divorced_str = "N/A"
 		else:
-			divorced_str = time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(divorced_since))
+			divorced_str = time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(divorced_since)) #todo: integrate timezone portion of Birthday cog
 		if divorced == 0:
 			is_or_was = "is"
 		else:
 			is_or_was = "was"
-		await ctx.send("{0}'s spouse {7} {1}\n\n**Karma**: {2}\n**Is Divorced**: {3}\n**Married Since**: {4}\n**Divorced Since**: {5}\n**First Marraige On**: {6}".format(user.display_name, discord.utils.get(ctx.guild.members, id = spouse).display_name, karma, bool(divorced), time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(married_since)), divorced_str, time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(first_married)), is_or_was))
+		await ctx.send("{0}'s spouse {7} {1}\n\n**Karma**: {2}\n**Is Divorced**: {3}\n**Married Since**: {4}\n**Divorced Since**: {5}\n**First Marraige On**: {6}".format(user.display_name, discord.utils.get(self.bot.get_all_members(), id = spouse).display_name, karma, bool(divorced), time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(married_since)), divorced_str, time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(first_married)), is_or_was))
 
 	# todo: +couples
 
@@ -518,6 +530,7 @@ class Couples(BaseCog):
 		spouse = None
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
+			await self.debug_log_channel.send("`divorce` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == ctx.author.id:
 				spouse = i.get("user2")
 				if i.get("divorced") >= 1:
@@ -531,9 +544,9 @@ class Couples(BaseCog):
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
 		if spouse is None:
-			await ctx.send("You are not married.".format(ctx.author.id.display_name))
+			await ctx.send("You are not married.")
 			return
-		user = discord.utils.get(ctx.guild.members, id = spouse)
+		user = discord.utils.get(self.bot.get_all_members(), id = spouse)
 		# Check "pending" status
 		senttime = calendar.timegm(ctx.message.created_at.utctimetuple())
 		pending = await self.conf.get_raw("pending_divorces")
@@ -554,7 +567,7 @@ class Couples(BaseCog):
 		pending.append({"user1": ctx.author.id, "user2": user.id, "time": senttime})
 		await self.conf.set_raw("pending_divorces", value = pending)
 		def check(msg):
-			return msg.channel == ctx.channel and (msg.author == ctx.author and msg.content == "{0}cancel".format(ctx.prefix)) or (msg.author == user and (msg.content == "{0}accept".format(ctx.prefix) or msg.content == "{0}refuse".format(ctx.prefix)))
+			return msg.channel == ctx.channel and (msg.author.id == ctx.author.id and msg.content == "{0}cancel".format(ctx.prefix)) or (msg.author.id == user.id and (msg.content == "{0}accept".format(ctx.prefix) or msg.content == "{0}refuse".format(ctx.prefix)))
 		try:
 			message = await ctx.bot.wait_for("message", check=check, timeout=30)
 		except asyncio.TimeoutError:
@@ -570,10 +583,10 @@ class Couples(BaseCog):
 					if i.get("user1") == ctx.author.id:
 						pending.remove(i)
 						await self.conf.set_raw("pending_divorces", value = pending)
-			if message.author == ctx.author and message.content == "{0}cancel".format(ctx.prefix):
+			if message.author.id == ctx.author.id and message.content == "{0}cancel".format(ctx.prefix):
 				await ctx.send("{0} canceled their request.".format(ctx.author.display_name))
 				return
-			elif message.author == user and message.content == "{0}accept".format(ctx.prefix):
+			elif message.author.id == user.id and message.content == "{0}accept".format(ctx.prefix):
 				try:
 					messages = await self.conf.guild(ctx.guild).get_raw("divorce_messages")
 				except KeyError:
@@ -590,10 +603,10 @@ class Couples(BaseCog):
 					await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
 				except IndexError:
 					await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
-					await ctx.send("*{0} and {1} are now divorced. \U0001F494*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
+					await ctx.send("*{0} and {1} are now divorced. \U0001F494*".format(user1.display_name, user2.display_name))
 				return
-			elif message.author == user and message.content == "{0}refuse".format(ctx.prefix):
-				await ctx.send("{0} doesn't want to divorce yet. ".format(user.display_name))
+			elif message.author.id == user.id and message.content == "{0}refuse".format(ctx.prefix):
+				await ctx.send("{0} doesn't want to divorce yet.".format(user.display_name))
 				return
 
 	@checks.is_owner()
@@ -605,6 +618,7 @@ class Couples(BaseCog):
 		spouse = None
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
+			await self.debug_log_channel.send("`admindivorce` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == user1.id:
 				spouse = i.get("user2")
 				if i.get("divorced") >= 1:
@@ -620,9 +634,14 @@ class Couples(BaseCog):
 		if user1 is None:
 			return
 		if spouse is None:
-			await ctx.send("{0} is not married.".format(user.display_name))
+			await ctx.send("{0} is not married.".format(user1.display_name))
 			return
-		user2 = discord.utils.get(ctx.guild.members, id = spouse)
+		pending = await self.conf.get_raw("pending_divorces")
+		for i in pending:
+			if i.get("user1") == user1.id or i.get("user2") == user1.id:
+				pending.remove(i)
+				await self.conf.set_raw("pending_divorces", value = pending)
+		user2 = discord.utils.get(self.bot.get_all_members(), id = spouse)
 		try:
 			messages = await self.conf.guild(ctx.guild).get_raw("divorce_messages")
 		except KeyError:
@@ -636,10 +655,10 @@ class Couples(BaseCog):
 		await self.conf.set_raw("couples", value = couples)
 		sentmsg = random.choice(messages)
 		try:
-			await ctx.send("*{0}*".format(sentmsg.format(ctx.author.display_name, user.display_name)))
+			await ctx.send("*{0}*".format(sentmsg.format(user1.display_name, user2.display_name)))
 		except IndexError:
 			await ctx.send("**__Warning:__ Message `{0}` has an invalid format!**".format(sentmsg))
-			await ctx.send("*{0} and {1} are now divorced. \U0001F494*".format(random.choice(messages).format(user1.display_name, user2.display_name)))
+			await ctx.send("*{0} and {1} are now divorced. \U0001F494*".format(user1.display_name, user2.display_name))
 
 	@checks.is_owner()
 	@commands.guild_only()
@@ -649,6 +668,7 @@ class Couples(BaseCog):
 		spouse = None
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
+			await self.debug_log_channel.send("`harddivorce` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == user.id:
 				spouse = i.get("user2")
 				if i.get("divorced") >= 1:
@@ -666,10 +686,14 @@ class Couples(BaseCog):
 		if spouse is None:
 			await ctx.send("{0} is not married.".format(user.display_name))
 			return
-		user2 = discord.utils.get(ctx.guild.members, id = spouse)
+		pending = await self.conf.get_raw("pending_divorces")
+		for i in pending:
+			if i.get("user1") == user.id or i.get("user2") == user.id:
+				pending.remove(i)
+				await self.conf.set_raw("pending_divorces", value = pending)
+		user2 = discord.utils.get(self.bot.get_all_members(), id = spouse)
 		for i in couples:
-			if (i.get("user1") == ctx.author.id and i.get("user2") == user.id) or (i.get("user1") == user.id and i.get("user2") == ctx.author.id):
+			if (i.get("user1") == user.id and i.get("user2") == user2.id) or (i.get("user1") == user.id and i.get("user2") == user2.id):
 				couples.remove(i)
 		await self.conf.set_raw("couples", value = couples)
 		await ctx.send("*{0} and {1} are now divorced. Their karma and stats are reset. \U0001F494*".format(user.display_name, user2.display_name))
-
