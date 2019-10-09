@@ -506,10 +506,10 @@ class Couples(BaseCog):
 				married_since = i.get("married_since")
 				first_married = i.get("first_married")
 				divorced_since = i.get("divorced_since")
-			if spouse is not None and divorced == 0:
+			if spouse_id is not None and divorced == 0:
 				break # we already have our current spouse, prevents prior spouses from overwriting current ones
 			# TODO: Return the entry from the latest marriage/divorce, in cases of remarriage or database hacks
-		if spouse is None:
+		if spouse_id is None:
 			await ctx.send("{0} is not married!".format(user.display_name))
 			return
 		if divorced_since == 0:
