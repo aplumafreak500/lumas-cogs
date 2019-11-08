@@ -548,6 +548,8 @@ class Couples(BaseCog):
 			# Return a default payload
 			return {"profile_data": True, "type": "couples", "data": {"user": 0, "spouse": 0, "karma": 0, "divorced": False, "married_since": 0, "first_married": 0}}
 		spouse_id = None
+		married_since = 0
+		divorced_since = 0
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
 			await self.debug_log_channel.send("`profile_get_spouse` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
