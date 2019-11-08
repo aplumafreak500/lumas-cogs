@@ -331,10 +331,17 @@ class Couples(BaseCog):
 				if couples == []: # edge case for first couple
 					couples.append({"user1": ctx.author.id, "user2": user.id, "karma": 0, "divorced": 0, "married_since": 0, "divorced_since": 0, "first_married": 0})
 					await self.conf.set_raw("couples", value = couples)
-				for i in couples:
-					if not ((i.get("user1") == ctx.author.id and i.get("user2") == user.id) or (i.get("user1") == user.id and i.get("user2") == ctx.author.id)):
+					await self.debug_log_channel.send("`propose` DEBUG LOG\nAdding First Entry:\n```User1: {}\nUser2: {}\n```".format(ctx.author.id, user.id))
+				else:
+					is_existing = False
+					for i in couples:
+						if ((i.get("user1") == ctx.author.id and i.get("user2") == user.id) or (i.get("user1") == user.id and i.get("user2") == ctx.author.id)):
+							is_existing = True
+							break
+					if is_existing == False:
 						couples.append({"user1": ctx.author.id, "user2": user.id, "karma": 0, "divorced": 0, "married_since": 0, "divorced_since": 0, "first_married": 0})
 						await self.conf.set_raw("couples", value = couples)
+						await self.debug_log_channel.send("`propose` DEBUG LOG\nAdding A New Entry:\n```User1: {}\nUser2: {}\n```".format(ctx.author.id, user.id))
 				for i in couples:
 					if (i.get("user1") == ctx.author.id and i.get("user2") == user.id) or (i.get("user1") == user.id and i.get("user2") == ctx.author.id):
 						if i.get("first_married") == 0:
@@ -344,7 +351,7 @@ class Couples(BaseCog):
 						i.update(karma = karma)
 						i.update(divorced_since = 0)
 						i.update(divorced = 0)
-						await self.conf.set_raw("couples", value = couples)
+						break
 				await self.conf.set_raw("couples", value = couples)
 				sentmsg = random.choice(messages)
 				try:
@@ -392,10 +399,16 @@ class Couples(BaseCog):
 		if couples == []: # edge case for first couple
 			couples.append({"user1": user1.id, "user2": user2.id, "karma": 0, "divorced": 0, "married_since": 0, "divorced_since": 0, "first_married": 0})
 			await self.conf.set_raw("couples", value = couples)
-		for i in couples:
-			if not ((i.get("user1") == user1.id and i.get("user2") == user2.id) or (i.get("user1") == user2.id and i.get("user2") == user1.id)):
-				couples.append({"user1": user1.id, "user2": user2.id, "karma": 0, "divorced": 0, "married_since": 0, "divorced_since": 0, "first_married": 0})
+		else:
+			is_existing = False
+			for i in couples:
+				if ((i.get("user1") == ctx.author.id and i.get("user2") == user.id) or (i.get("user1") == user.id and i.get("user2") == ctx.author.id)):
+					is_existing = True
+					break
+			if is_existing == False:
+				couples.append({"user1": ctx.author.id, "user2": user.id, "karma": 0, "divorced": 0, "married_since": 0, "divorced_since": 0, "first_married": 0})
 				await self.conf.set_raw("couples", value = couples)
+				await self.debug_log_channel.send("`propose` DEBUG LOG\nAdding A New Entry:\n```User1: {}\nUser2: {}\n```".format(ctx.author.id, user.id))
 		for i in couples:
 			if (i.get("user1") == user1.id and i.get("user2") == user2.id) or (i.get("user1") == user2.id and i.get("user2") == user1.id):
 				if i.get("first_married") == 0:
@@ -405,7 +418,7 @@ class Couples(BaseCog):
 				i.update(karma = karma)
 				i.update(divorced_since = 0)
 				i.update(divorced = 0)
-				await self.conf.set_raw("couples", value = couples)
+				break
 		await self.conf.set_raw("couples", value = couples)
 		sentmsg = random.choice(messages)
 		try:
@@ -480,35 +493,38 @@ class Couples(BaseCog):
 			user = ctx.message.author
 		spouse_id = None
 		couples = await self.conf.get_raw("couples")
+		married_since = 0
+		divorced_since = 0
 		for i in couples:
 			await self.debug_log_channel.send("`spouse` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == user.id:
-				divorced = i.get("divorced")
-				if divorced != 0:
+				if i.get("divorced") != 0:
 					# sanitize divorced value
-					divorced = 1
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				spouse_id = i.get("user2")
-				karma = i.get("karma")
-				married_since = i.get("married_since")
-				first_married = i.get("first_married")
-				divorced_since = i.get("divorced_since")
+				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+					divorced = i.get("divorced")
+					spouse_id = i.get("user2")
+					karma = i.get("karma")
+					married_since = i.get("married_since")
+					first_married = i.get("first_married")
+					divorced_since = i.get("divorced_since")
+				else:
+					continue
 			if i.get("user2") == user.id:
-				divorced = i.get("divorced")
-				if divorced != 0:
+				if i.get("divorced") != 0:
 					# sanitize divorced value
-					divorced = 1
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				spouse_id = i.get("user1")
-				karma = i.get("karma")
-				married_since = i.get("married_since")
-				first_married = i.get("first_married")
-				divorced_since = i.get("divorced_since")
-			if spouse_id is not None and divorced == 0:
-				break # we already have our current spouse, prevents prior spouses from overwriting current ones
-			# TODO: Return the entry from the latest marriage/divorce, in cases of remarriage or database hacks
+				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+					divorced = i.get("divorced")
+					spouse_id = i.get("user1")
+					karma = i.get("karma")
+					married_since = i.get("married_since")
+					first_married = i.get("first_married")
+					divorced_since = i.get("divorced_since")
+				else:
+					continue
 		if spouse_id is None:
 			await ctx.send("{0} is not married!".format(user.display_name))
 			return
@@ -526,6 +542,51 @@ class Couples(BaseCog):
 		else:
 			spouse_str=spouse_user.display_name
 		await ctx.send("{0}'s spouse {7} {1}\n\n**Karma**: {2}\n**Is Divorced**: {3}\n**Married Since**: {4}\n**Divorced Since**: {5}\n**First Marraige On**: {6}".format(user.display_name, spouse_str, karma, bool(divorced), time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(married_since)), divorced_str, time.strftime("%B %d, %Y %I:%M:%S %p %Z", time.gmtime(first_married)), is_or_was))
+
+	async def profile_get_spouse(self, user: discord.Member = None) -> dict:
+		if user is None:
+			# Return a default payload
+			return {"profile_data": True, "type": "couples", "data": {"user": 0, "spouse": 0, "karma": 0, "divorced": False, "married_since": 0, "first_married": 0}}
+		spouse_id = None
+		couples = await self.conf.get_raw("couples")
+		for i in couples:
+			await self.debug_log_channel.send("`profile_get_spouse` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
+			if i.get("user1") == user.id:
+				if i.get("divorced") != 0:
+					# sanitize divorced value
+					i.update(divorced = 1)
+					await self.conf.set_raw("couples", value = couples)
+				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+					divorced = i.get("divorced")
+					spouse_id = i.get("user2")
+					karma = i.get("karma")
+					married_since = i.get("married_since")
+					first_married = i.get("first_married")
+					divorced_since = i.get("divorced_since")
+				else:
+					continue
+			if i.get("user2") == user.id:
+				if i.get("divorced") != 0:
+					# sanitize divorced value
+					i.update(divorced = 1)
+					await self.conf.set_raw("couples", value = couples)
+				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+					divorced = i.get("divorced")
+					spouse_id = i.get("user1")
+					karma = i.get("karma")
+					married_since = i.get("married_since")
+					first_married = i.get("first_married")
+					divorced_since = i.get("divorced_since")
+				else:
+					continue
+		if spouse_id is None:
+			spouse_id = 0
+			karma = 0
+			married_since = 0
+			first_married = 0
+			divorced_since = 0
+			divorced = 0
+		return {"profile_data": True, "type": "couples", "data": {"user": user.id, "spouse": spouse_id, "karma": karma, "divorced": bool(divorced), "married_since": married_since, "divorced_since": divorced_since, "first_married": first_married}}
 
 	# todo: +couples
 
@@ -603,6 +664,7 @@ class Couples(BaseCog):
 					if (i.get("user1") == ctx.author.id and i.get("user2") == user.id) or (i.get("user1") == user.id and i.get("user2") == ctx.author.id):
 						i.update(divorced_since = senttime)
 						i.update(divorced = 1)
+						break
 				await self.conf.set_raw("couples", value = couples)
 				sentmsg = random.choice(messages)
 				try:
@@ -658,6 +720,7 @@ class Couples(BaseCog):
 			if (i.get("user1") == user1.id and i.get("user2") == user2.id) or (i.get("user1") == user2.id and i.get("user2") == user1.id):
 				i.update(divorced_since = senttime)
 				i.update(divorced = 1)
+				break
 		await self.conf.set_raw("couples", value = couples)
 		sentmsg = random.choice(messages)
 		try:
@@ -701,5 +764,6 @@ class Couples(BaseCog):
 		for i in couples:
 			if (i.get("user1") == user.id and i.get("user2") == user2.id) or (i.get("user1") == user.id and i.get("user2") == user2.id):
 				couples.remove(i)
+				break
 		await self.conf.set_raw("couples", value = couples)
 		await ctx.send("*{0} and {1} are now divorced. Their karma and stats are reset. \U0001F494*".format(user.display_name, user2.display_name))
