@@ -604,12 +604,20 @@ class Couples(BaseCog):
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
+				if i.get("divorced") == 0: # prevent a "double divorce"
+					break
+				else:
+					spouse = None # prevent divorcing the last array member
 			if i.get("user2") == ctx.author.id:
 				spouse = i.get("user1")
 				if i.get("divorced") >= 1:
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
+				if i.get("divorced") == 0: # prevent a "double divorce"
+					break
+				else:
+					spouse = None # prevent divorcing the last array member
 		if spouse is None:
 			await ctx.send("You are not married.")
 			return
@@ -693,12 +701,20 @@ class Couples(BaseCog):
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
+				if i.get("divorced") == 0: # prevent a "double divorce"
+					break
+				else:
+					spouse = None # prevent divorcing the last array member
 			if i.get("user2") == user1.id:
 				spouse = i.get("user1")
 				if i.get("divorced") >= 1:
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
+				if i.get("divorced") == 0: # prevent a "double divorce"
+					break
+				else:
+					spouse = None # prevent divorcing the last array member
 		if user1 is None:
 			return
 		if spouse is None:
@@ -744,12 +760,20 @@ class Couples(BaseCog):
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
+				if i.get("divorced") == 0: # prevent a "double divorce"
+					break
+				else:
+					spouse = None # prevent divorcing the last array member
 			if i.get("user2") == user.id:
 				spouse = i.get("user1")
 				if i.get("divorced") >= 1:
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
+				if i.get("divorced") == 0: # prevent a "double divorce"
+					break
+				else:
+					spouse = None # prevent divorcing the last array member
 		if user is None:
 			return
 		if spouse is None:
