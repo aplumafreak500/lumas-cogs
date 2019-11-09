@@ -1,0 +1,10 @@
+{
+    "author" : ["aplumafreak500"],
+    "bot_version" : [3,0,0],
+    "description" : "User info and profiles",
+    "hidden" : false,
+    "install_msg" : "Thank you for adding this cog!",
+    "short" : "Profiles & user info",
+    "requirements": [],
+    "tags" : ["profile","utilities","utility","userinfo","serverinfo"]
+}

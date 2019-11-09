@@ -491,10 +491,12 @@ class Couples(BaseCog):
 	async def spouse(self, ctx, user: discord.Member = None):
 		if user is None:
 			user = ctx.message.author
+		# TODO: Replace all this madness with a simple call to profile_get_spouse
 		spouse_id = None
 		couples = await self.conf.get_raw("couples")
 		married_since = 0
 		divorced_since = 0
+		divorced = 1 # Assume divorced status. A non-divorced couple unsets this and prevents another divorced couple from overwriting the struct.
 		for i in couples:
 			await self.debug_log_channel.send("`spouse` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
 			if i.get("user1") == user.id:
@@ -502,7 +504,7 @@ class Couples(BaseCog):
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+				if (((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) and (divorced == 1)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
 					divorced = i.get("divorced")
 					spouse_id = i.get("user2")
 					karma = i.get("karma")
@@ -516,7 +518,7 @@ class Couples(BaseCog):
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+				if (((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) and (divorced == 1)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
 					divorced = i.get("divorced")
 					spouse_id = i.get("user1")
 					karma = i.get("karma")
@@ -550,6 +552,7 @@ class Couples(BaseCog):
 		spouse_id = None
 		married_since = 0
 		divorced_since = 0
+		divorced = 1 # Assume divorced status. A non-divorced couple unsets this and prevents another divorced couple from overwriting the struct.
 		couples = await self.conf.get_raw("couples")
 		for i in couples:
 			await self.debug_log_channel.send("`profile_get_spouse` DEBUG LOG\n``` User1: {} User2: {} Divorced: {}```".format(i.get("user1"), i.get("user2"), i.get("divorced")))
@@ -558,7 +561,7 @@ class Couples(BaseCog):
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+				if (((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) and (divorced == 1)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
 					divorced = i.get("divorced")
 					spouse_id = i.get("user2")
 					karma = i.get("karma")
@@ -572,7 +575,7 @@ class Couples(BaseCog):
 					# sanitize divorced value
 					i.update(divorced = 1)
 					await self.conf.set_raw("couples", value = couples)
-				if ((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
+				if (((i.get("divorced") == 1) and (i.get("divorced_since") > divorced_since)) and (divorced == 1)) or ((i.get("divorced") == 0) and (i.get("married_since") > married_since)):
 					divorced = i.get("divorced")
 					spouse_id = i.get("user1")
 					karma = i.get("karma")
