@@ -42,22 +42,30 @@ class Profile(BaseCog):
 			status = "Offline"
 		else:
 			status = "Unknown"
-		sent_msg += "*Status:* {0}\n".format(status)
-		if len(user.activities) == 0:
+		sent_msg += "*Presence:* {0}\n".format(status)
+		if user.activity == None or user.activity.type == discord.ActivityType.unknown:
 			activity = None
-		# HACK: can discord.user.activities contain multiple elements?
-		elif user.activities[0].type == discord.ActivityType.playing:
+		# TODO: can discord.user.activities contain multiple elements?
+		elif user.activity.type == discord.ActivityType.playing:
 			activity = "playing"
-		elif user.activities[0].type == discord.ActivityType.streaming:
+		elif user.activity.type == discord.ActivityType.streaming:
 			activity = "streaming"
-		elif user.activities[0].type == discord.ActivityType.listening:
+		elif user.activity.type == discord.ActivityType.listening:
 			activity = "listening to"
-		elif user.activities[0].type == discord.ActivityType.watching:
+		elif user.activity.type == discord.ActivityType.watching:
 			activity = "watching"
-		else:
+		elif user.activity.type == discord.ActivityType.custom:
+			if user.activity.emoji != None:
+				emoji = ""
+				if user.activity.emoji.is_unicode_emoji():
+					emoji = user.activity.emoji.name
+				else:
+					emoji = "<:{0}:{1}>".format(user.activity.emoji.name, user.activity.emoji.id)
+			if user.activity.name != "" and user.activity.name != None:
+				sent_msg += "*Status:* {1} {0}\n".format(user.activity.name, emoji)
 			activity = None
-		if activity != None and (user.activities[0].name == None or user.activities[0].name == ""):
-			sent_msg += "*Currently {0}* {1}\n".format(activity, user.activities[0].name)
+		if activity != None and (user.activity.name == None or user.activity.name == ""):
+			sent_msg += "*Currently {0}* {1}\n".format(activity, user.activity.name)
 		# discord.py allows for retrieving mobile/desktop/web status, we don't do that yet
 		roles = ""
 		if len(user.roles) != 1:
